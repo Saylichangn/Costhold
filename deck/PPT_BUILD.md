@@ -1,0 +1,64 @@
+# PowerPoint build checklist (Sayli)
+
+## Generate starter deck
+
+```powershell
+cd C:\Users\storm\Projects\churnzero-26
+pip install -e ".[deck]"
+python -m scripts.pick_persuadable_story
+python -m scripts.build_deck_pptx
+```
+
+Output: `deck/ChurnZero_Costhold_Presentation.pptx` (15 slides).
+
+Copy reference: [`costhold_slides_content.md`](costhold_slides_content.md) · speaker notes · [`docs/JUDGE_QA.md`](../docs/JUDGE_QA.md)
+
+## Charts in git
+
+Deck PNGs live under `deck/charts/`. If missing locally:
+
+```powershell
+python -m scripts.build_artifacts
+```
+
+Then re-run `build_deck_pptx`.
+
+## Manual polish (30–60 min)
+
+1. Open PPTX — fix alignment, team branding (IIT logo optional).
+2. **Slide 2:** add simple 80:1 bar visual if not already clear.
+3. **Slide 4:** optional tenure × churn bar chart from EDA.
+4. **Slide 8:** ensure cost curve is large; verify caption **₹137.5k saved**, threshold **0.002**.
+5. Spell-check all slides.
+6. Export PDF: `deck/ChurnZero_Costhold_Presentation.pdf` (File → Save as PDF), or on Windows:
+
+```powershell
+python -m scripts.export_deck_pdf
+```
+
+## Package for Unstop
+
+```powershell
+python -m scripts.validate_submission
+python -m scripts.package_submission
+```
+
+Unzip `submission/ChurnZero_Costhold.zip` once — confirm CSV, PDF, and `costhold-code/` folder.
+
+## Rehearsal (15 min with Sayli)
+
+- Slide **8** — hero cost curve (pause 20 seconds)
+- Slide **10** — uplift + “offers not randomized”
+- Slide **11** — one persuadable story (read aloud: if P(churn) looks low, explain persuadable = high CATE in risk band, not always top churn score)
+
+## Anti-drift
+
+After any retrain, run:
+
+```powershell
+python -m scripts.pick_persuadable_story
+python -m scripts.build_deck_pptx
+python -m pytest tests/test_deck_metrics_consistency.py -q
+```
+
+Sign [`reviews/qa_checklist.md`](../reviews/qa_checklist.md) when PDF is exported.

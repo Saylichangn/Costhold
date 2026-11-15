@@ -1,0 +1,64 @@
+# Architecture
+
+One-page map of Costhold. Full design rationale: [`docs/specs/2026-05-24-costhold-design.md`](specs/2026-05-24-costhold-design.md).
+
+## Pipeline
+
+```
+raw CSVs
+  → data.py          load, stratified folds
+  → features.py      ratios, categoricals, missingness (train-only fit)
+  → models.py        LightGBM + CatBoost OOF → meta on OOF → OOF Platt + rank blend tune
+  → threshold.py     rupee cost sweep → optimal t (on calibrated OOF)
+  → submit.py        dual-track CSV (rank prob / calibrated binary)
+  → importance.py    LGB gain table (during train)
+  → uplift.py        T-learner CATE + segments (deck)
+  → fairness.py      gender / region audit (deck)
+  → build_artifacts  PNG charts for slides
+```
+
+## Module map
+
+| Module | Responsibility |
+|---|---|
+| `config.py` | Paths, costs, column lists |
+| `artifacts.py` | Output paths, `ensure_dirs()`, manifest |
+| `pipeline.py` | `train()` / `predict()` orchestration |
+| `scripts/` | CLI wrappers for judges |
+
+## Artifact contract
+
+After `train()`:
+
+| File | Purpose |
+|---|---|
+| `stacked_bundle.joblib` | LGB + CatBoost + meta + calibrator |
+| `fe_state.joblib` | Feature engineering state |
+| `cost_optimal_threshold.json` | Optimal t + cost comparison |
+| `training_metrics.json` | OOF metrics @ optimal vs 0.5 |
+| `feature_importances.csv` | Deck chart 09 |
+| `artifacts_manifest.json` | Seed, git commit, headline numbers |
+| `rank_stack_weights.json` | OOF-tuned rank blend for `churn_probability` |
+| `uplift_propensity_summary.json` | IPTW trim stats for deck |
+
+## Predict (dual-track)
+
+```
+test features
+  → ensemble_base_predictions (LGB + Cat avg)
+  → predict_stacked → Platt → threshold → churn_prediction
+  → rank_average_probabilities → churn_probability
+```
+
+## Tests
+
+- **Unit** — threshold, submit, features, fairness rules (~30 tests, <5s)
+- **Smoke** — synthetic 160-row train, 2-fold, ~10s (`@pytest.mark.slow`)
+- **Integration** — real competition CSVs when present (`@pytest.mark.integration`)
+
+## Team ownership
+
+| Area | Owner |
+|---|---|
+| `src/`, `scripts/`, `tests/` | Sayli Changan |
+| `deck/`, `reviews/`, submission ZIP | Sayli Changan |
